@@ -1,0 +1,4 @@
+gooddata-pandas
+matplotlib
+streamlit
+plotly
