@@ -16,10 +16,14 @@ workspace_id = os.getenv("GOODDATA_WORKSPACE_ID")
 visualization_id = os.getenv("VISUALIZATION_ID")
 databricks_url = os.getenv("DATABRICKS_URL")
 databricks_token = os.getenv("DATABRICKS_TOKEN")
-gp = GoodPandas(host, token)
 
-frames = gp.data_frames(workspace_id)
-df = frames.for_visualization(visualization_id)
+
+@st.cache_data
+def get_dataframe(visualization_id: str):
+    gp = GoodPandas(host, token)
+
+    frames = gp.data_frames(workspace_id)
+    return frames.for_visualization(visualization_id)
 
 
 # Function for Databricks parse
@@ -33,6 +37,7 @@ def create_tf_serving_json(data):
     }
 
 
+@st.cache_data
 def score_model(dataset):
     url = databricks_url
     headers = {
@@ -55,47 +60,69 @@ def score_model(dataset):
     return response.json()
 
 
-st.title("Net Sales Prediction")
+def init_app():
+    df = get_dataframe(visualization_id)
 
-to_predict = st.slider(
-    "Number of months to predict:", min_value=1, max_value=24, value=10
-)
-last_date = df.index[-1]
-new_dates = pd.date_range(last_date, periods=to_predict + 1, freq="MS")[1:]
+    st.title("Net Sales Prediction")
 
-zeroes = [0 for _ in range(to_predict)]
-pred_df = pd.DataFrame(zeroes, index=new_dates, columns=["Stock_Price"])
-result = score_model(pred_df)
-predictions = [item["predicted_mean"] for item in result["predictions"]]
-pred_df = pd.DataFrame(predictions, index=new_dates, columns=["Stock_Price"])
+    to_predict = st.slider(
+        "Number of months to predict:", min_value=1, max_value=24, value=10
+    )
 
-new_df = pd.concat([df, pred_df])
+    last_date = df.index[-1]
+    new_dates = pd.date_range(last_date, periods=to_predict + 1, freq="MS")[1:]
 
-st.write("### Stock Price Over Time with Predictions")
+    zeroes = [0 for _ in range(to_predict)]
+    pred_df = pd.DataFrame(zeroes, index=new_dates, columns=["Stock_Price"])
 
-fig = px.line(
-    new_df,
-    x=new_df.index,
-    y="Stock_Price",
-    title="Net Sales Over Time with Predictions",
-)
+    result = score_model(pred_df)
+    if "predicted_mean" in result["predictions"][0]:
+        predictions = [item["predicted_mean"] for item in result["predictions"]]
+    else:
+        predictions = [
+            value for item in result["predictions"] for value in item.values()
+        ]
 
-fig.add_scatter(
-    x=pred_df.index,
-    y=pred_df["Stock_Price"],
-    mode="lines",
-    name="Predictions",
-    line=dict(color="red"),
-)
+    pred_df = pd.DataFrame(predictions, index=new_dates, columns=["Stock_Price"])
 
-st.plotly_chart(fig)
+    new_df = pd.concat([df, pred_df])
 
-col1, col2 = st.columns(2)
+    st.write("### Stock Price Over Time with Predictions")
 
-with col1:
-    st.write("### Historical Data")
-    st.dataframe(df)
+    fig = px.line(
+        new_df,
+        x=new_df.index,
+        y="Stock_Price",
+        title="Net Sales Over Time with Predictions",
+    )
 
-with col2:
-    st.write("### Predictions")
-    st.dataframe(pred_df)
+    gap_df = pd.concat([df.tail(1), pred_df.head(1)])
+
+    fig.add_scatter(
+        x=pred_df.index,
+        y=pred_df["Stock_Price"],
+        mode="lines",
+        name="Predictions",
+        line=dict(color="red"),
+    )
+    fig.add_scatter(
+        x=gap_df.index,
+        y=gap_df["Stock_Price"],
+        mode="lines",
+        name="Predictions",
+        line=dict(color="red"),
+    )
+    st.plotly_chart(fig)
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.write("### Historical Data")
+        st.dataframe(df)
+
+    with col2:
+        st.write("### Predictions")
+        st.dataframe(pred_df)
+
+
+init_app()
