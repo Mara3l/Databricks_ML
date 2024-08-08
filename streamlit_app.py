@@ -96,15 +96,10 @@ def init_app():
         title="Net Sales Over Time with Predictions",
     )
 
-    gap_df = pd.concat([df.tail(1), pred_df.head(1)])
+    fig.update_layout(xaxis_title="Date", yaxis_title="Stock Price")
 
-    fig.add_scatter(
-        x=pred_df.index,
-        y=pred_df["Stock_Price"],
-        mode="lines",
-        name="Predictions",
-        line=dict(color="red"),
-    )
+    gap_df = pd.concat([df.tail(1), pred_df])
+
     fig.add_scatter(
         x=gap_df.index,
         y=gap_df["Stock_Price"],
@@ -112,6 +107,7 @@ def init_app():
         name="Predictions",
         line=dict(color="red"),
     )
+
     st.plotly_chart(fig)
 
     col1, col2 = st.columns(2)
