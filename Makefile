@@ -5,6 +5,7 @@
 all: .venv/bin/activate
 
 # Create virtual environment
+.PHONY: dev
 .venv/bin/activate: requirements.txt
 	python3 -m venv .venv
 	.venv/bin/pip install --upgrade pip
