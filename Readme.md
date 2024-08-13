@@ -9,7 +9,7 @@ The core of the POC is a Streamlit application, which predicts future stock pric
 1. Create a serving endpoint in Databricks.
 1. Use the Databricks endpoint as well as the GoodData connection in the [steamlit application](./streamlit_app.py).
 
-## Setup
+## Setup
 
 All the needed python requirements are in the [requirements.txt](./requirements.txt). I've also included a [Makefile](./Makefile), to make your life a little easier, so with `make dev` you can create virtual env hassle-free.
 
